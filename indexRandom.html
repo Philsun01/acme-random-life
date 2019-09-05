@@ -6,6 +6,7 @@
     <script src='https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.0/axios.js'></script>
     <script src='https://cdnjs.cloudflare.com/ajax/libs/react-router-dom/5.0.1/react-router-dom.js'></script>
     <script src='https://cdnjs.cloudflare.com/ajax/libs/Faker/3.1.0/faker.js'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.js'></script>
 <style>
 body {
   font-family: verdana;
@@ -55,10 +56,8 @@ input, button {
       const { Component } = React;
       const { HashRouter, Route, Link, Switch, Redirect } = ReactRouterDOM;
 
-
-
       const renderNotes = (notes, destroy)=> {
-        console.log(notes);
+        //console.log(notes);
         return(
           <ul>
             {
@@ -73,6 +72,40 @@ input, button {
           </ul>
         )
       }
+      const renderCompanies = (companies, destroyCompany)=> {
+        //console.log(companies);
+        return(
+          <ul>
+            {
+              companies.map((company,idx)=>{
+              return(
+                <div key = {idx}>
+                <li>{company.name}</li>
+                <button onClick = {()=>destroyCompany(company)}>Destroy</button>
+                </div>)
+                })
+              }
+          </ul>
+        )
+      }
+      const renderVacations = (vacations, destoryVacations)=>{
+        return(
+          <ul>
+            {
+              vacations.map((vacation,idx)=>{
+              return(
+                <div key = {idx}>
+                <li>{vacation.start}</li>
+                <li>{vacation.end}</li>
+                <button>Destroy</button>
+                </div>)
+                })
+              }
+          </ul>
+        )
+
+      }
+
 
       class App extends Component {
         constructor(){
@@ -80,50 +113,83 @@ input, button {
           this.state = {
             user:'',
             userId:'',
-            notes:[]
+            notes:[],
+            companies:[],
+            vacations:[]
           }
           this.addNote = this.addNote.bind(this);
-          this.destroy = this.destroy.bind(this);
+          this.addCompany = this.addCompany.bind(this);
+          this.addVacation = this.addVacation.bind(this);
+          this.destroyNote = this.destroyNote.bind(this);
+          this.destroyCompany = this.destroyCompany.bind(this);
         }
 
         async componentDidMount(){
           const user = await fetchUser();
           const userId = user.id;
-          //console.log(user);
-          const notes = (await axios.get(`${API}/users/${userId}/notes`)).data;
 
-          this.setState({user, userId, notes});
+          const notes = (await axios.get(`${API}/users/${userId}/notes`)).data;
+          const vacations = (await axios.get(`${API}/users/${userId}/vacations`)).data;
+          console.log(vacations);
+          this.setState({user, userId, notes, vacations});
         }
 
         async addNote(notes){
           const {userId} = window.localStorage;
-
-          const randomPhrase = `${faker.commerce.productAdjective()} ${faker.finance.accountName()} with ${faker.commerce.product()}`;
-
+          const randomPhrase = `${faker.commerce.productAdjective()} ${faker.finance.accountName()} for ${faker.commerce.product()} made in ${faker.address.country()}`;
           const posting = (await axios.post(`${API}/users/${userId}/notes`,{archived: false,text: randomPhrase})).data;
-
         this.setState({notes: [...notes,posting]});
         }
 
-        async destroy(note){
+        async addCompany(companies){
+          const {userId} = window.localStorage;
+          const randomCompany = (await axios.get(`${API}/companies/random`)).data;
+
+        this.setState({companies: [...companies,randomCompany]});
+        }
+
+        addVacation(vacations){
+          const {userId} = window.localStorage;
+          const start = moment().subtract(10, 'days').calendar();;
+          const end = moment().subtract(6, 'days').calendar();;
+          console.log(start);
+          console.log(end);
+        this.setState({vacations: [...vacations,{start,end}]});
+        }
+
+        async destroyNote(note){
           await axios.delete(`${API}/users/${this.state.user.id}/notes/${note.id}`);
           this.setState({ notes : this.state.notes.filter( _note => _note.id !== note.id)});
         }
+        async destroyCompany(company){
+
+          this.setState({ companies : this.state.companies.filter( _company => _company.id !== company.id)});
+        }
 
         render(){
-          const {user, userId, notes} = this.state;
-          const {destroy} = this;
-          console.log(user);
+          const {user, userId, notes, companies, vacations} = this.state;
+          const {destroyNote, destroyCompany, destroyVacation} = this;
+          //console.log(user);
           return (
             <div>
               <h1>Hello {user.fullName}</h1>
               <h3>Your Id is {userId}</h3>
               <hr/>
-              <h2> Notes Section </h2>
+
+              <h2> {`Notes Section (${notes.length})`} </h2>
               <button onClick = { ()=>this.addNote(notes) } disabled = {notes.length>4}> Generate Notes </button>
-              {renderNotes(notes,destroy)}
+              {renderNotes(notes,destroyNote)}
               <hr/>
 
+              <h2> {`Company Section (${companies.length})`} </h2>
+              <button onClick = { ()=>this.addCompany(companies) } disabled = {companies.length>4}> Follow a new Company </button>
+              {renderCompanies(companies, destroyCompany)}
+              <hr/>
+
+              <h2> {`Vacation Section (${vacations.length})`} </h2>
+              <button onClick = { ()=>this.addVacation(vacations) } disabled = {vacations.length>2}> Set off on a random Vacation! </button>
+              {renderVacations(vacations, destroyVacation)}
+              <hr/>
             </div>
           )
         }
